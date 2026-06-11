@@ -1,0 +1,2080 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DELVALLE — Sistema Integrado</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <script>
+    // ─── Tailwind Config ────────────────────────────────────────────────────────
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            gold:   { DEFAULT: '#C9A84C', light: '#E8C96A', dark: '#9A7A2E' },
+            lilac:  { DEFAULT: '#9B7FD4', light: '#BBA8E8', dark: '#7460A8' },
+            blue:   { DEFAULT: '#3B82F6', light: '#60A5FA', dark: '#1D4ED8' },
+            dkbg:   { DEFAULT: '#0D0D1A', card: '#13132B', border: '#1E1E40' },
+            income: '#22C55E',
+            expense:'#EF4444',
+            health: '#10B981',
+          },
+          fontFamily: {
+            display: ['Orbitron', 'sans-serif'],
+            body:    ['Inter', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* ── Base ────────────────────────────────────────────────────────────────── */
+    * { box-sizing: border-box; }
+    body {
+      background: #0D0D1A;
+      font-family: 'Inter', sans-serif;
+      color: #E2E8F0;
+      overflow-x: hidden;
+    }
+
+    /* ── Logo Glow ───────────────────────────────────────────────────────────── */
+    .logo-glow {
+      text-shadow: 0 0 20px #C9A84C88, 0 0 40px #9B7FD444;
+      letter-spacing: 0.18em;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────────────────────────── */
+    #sidebar {
+      width: 240px;
+      min-height: 100vh;
+      background: linear-gradient(180deg, #13132B 0%, #0D0D1A 100%);
+      border-right: 1px solid #1E1E40;
+      transition: transform 0.3s ease;
+      position: fixed; top: 0; left: 0; z-index: 40;
+    }
+    #sidebar.closed { transform: translateX(-240px); }
+    #main-content { margin-left: 240px; transition: margin 0.3s ease; }
+    #main-content.full { margin-left: 0; }
+
+    /* ── Nav Items ───────────────────────────────────────────────────────────── */
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px; border-radius: 8px; cursor: pointer;
+      transition: all 0.2s; font-size: 0.85rem; font-weight: 500;
+      color: #94A3B8;
+    }
+    .nav-item:hover, .nav-item.active {
+      background: linear-gradient(90deg, #C9A84C22, transparent);
+      color: #C9A84C;
+      border-left: 2px solid #C9A84C;
+    }
+    .nav-item i { width: 18px; text-align: center; }
+
+    /* ── Cards ───────────────────────────────────────────────────────────────── */
+    .card {
+      background: #13132B;
+      border: 1px solid #1E1E40;
+      border-radius: 14px;
+      padding: 20px;
+    }
+    .card-gold { border-color: #C9A84C44; }
+    .card-lilac { border-color: #9B7FD444; }
+    .card-health { border-color: #10B98144; }
+
+    /* ── Stat Cards ──────────────────────────────────────────────────────────── */
+    .stat-card {
+      background: #13132B;
+      border: 1px solid #1E1E40;
+      border-radius: 12px;
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    }
+    .stat-income::before  { background: linear-gradient(90deg, #22C55E, transparent); }
+    .stat-expense::before { background: linear-gradient(90deg, #EF4444, transparent); }
+    .stat-gold::before    { background: linear-gradient(90deg, #C9A84C, transparent); }
+    .stat-lilac::before   { background: linear-gradient(90deg, #9B7FD4, transparent); }
+
+    /* ── Progress Bar ────────────────────────────────────────────────────────── */
+    .progress-bar {
+      height: 8px; border-radius: 4px;
+      background: #1E1E40; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; border-radius: 4px;
+      background: linear-gradient(90deg, #C9A84C, #E8C96A);
+      transition: width 0.5s ease;
+    }
+    .progress-fill.health { background: linear-gradient(90deg, #10B981, #34D399); }
+    .progress-fill.water  { background: linear-gradient(90deg, #3B82F6, #60A5FA); }
+
+    /* ── Inputs ──────────────────────────────────────────────────────────────── */
+    .dv-input {
+      background: #0D0D1A;
+      border: 1px solid #1E1E40;
+      border-radius: 8px;
+      color: #E2E8F0;
+      padding: 8px 12px;
+      font-size: 0.875rem;
+      width: 100%;
+      transition: border-color 0.2s;
+    }
+    .dv-input:focus {
+      outline: none;
+      border-color: #C9A84C;
+      box-shadow: 0 0 0 2px #C9A84C22;
+    }
+    select.dv-input option { background: #0D0D1A; }
+
+    /* ── Buttons ─────────────────────────────────────────────────────────────── */
+    .btn-gold {
+      background: linear-gradient(135deg, #C9A84C, #E8C96A);
+      color: #0D0D1A; font-weight: 700; border-radius: 8px;
+      padding: 9px 18px; font-size: 0.85rem; cursor: pointer;
+      border: none; transition: opacity 0.2s;
+    }
+    .btn-gold:hover { opacity: 0.85; }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid #C9A84C;
+      color: #C9A84C; font-weight: 600; border-radius: 8px;
+      padding: 8px 16px; font-size: 0.85rem; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-outline:hover { background: #C9A84C22; }
+    .btn-danger {
+      background: #EF444422; border: 1px solid #EF4444;
+      color: #EF4444; border-radius: 6px; padding: 5px 10px;
+      font-size: 0.75rem; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-danger:hover { background: #EF444444; }
+    .btn-income {
+      background: #22C55E22; border: 1px solid #22C55E;
+      color: #22C55E; border-radius: 8px; padding: 9px 18px;
+      font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-income:hover { background: #22C55E44; }
+
+    /* ── Sections (tabs) ─────────────────────────────────────────────────────── */
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* ── Transaction List ────────────────────────────────────────────────────── */
+    .tx-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 14px; border-radius: 8px;
+      background: #0D0D1A; border: 1px solid #1E1E40;
+      margin-bottom: 6px;
+    }
+
+    /* ── Calendar ────────────────────────────────────────────────────────────── */
+    .cal-day {
+      aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+      border-radius: 6px; font-size: 0.8rem; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .cal-day:hover { background: #1E1E40; }
+    .cal-day.today {
+      background: linear-gradient(135deg, #C9A84C, #E8C96A);
+      color: #0D0D1A; font-weight: 700;
+    }
+    .cal-day.has-data::after {
+      content: ''; display: block; width: 4px; height: 4px;
+      background: #9B7FD4; border-radius: 50%;
+      position: absolute; bottom: 3px;
+    }
+    .cal-day { position: relative; }
+
+    /* ── Water Cups ──────────────────────────────────────────────────────────── */
+    .water-cup {
+      width: 36px; height: 44px; border: 2px solid #3B82F6;
+      border-radius: 0 0 8px 8px; border-top: none;
+      cursor: pointer; transition: all 0.2s; position: relative;
+      display: flex; align-items: flex-end; overflow: hidden;
+    }
+    .water-cup .fill {
+      width: 100%; background: linear-gradient(0deg, #3B82F6, #60A5FA);
+      transition: height 0.3s ease;
+    }
+    .water-cup.filled { border-color: #60A5FA; }
+
+    /* ── Clock ───────────────────────────────────────────────────────────────── */
+    #live-clock {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.4rem; color: #C9A84C;
+      text-shadow: 0 0 10px #C9A84C66;
+    }
+
+    /* ── Verse Card ──────────────────────────────────────────────────────────── */
+    .verse-card {
+      background: linear-gradient(135deg, #13132B, #1a1040);
+      border: 1px solid #9B7FD444;
+      border-radius: 14px; padding: 24px;
+      position: relative; overflow: hidden;
+    }
+    .verse-card::before {
+      content: '"';
+      position: absolute; top: -20px; left: 10px;
+      font-size: 8rem; color: #9B7FD411;
+      font-family: Georgia, serif; line-height: 1;
+    }
+
+    /* ── Login Screen ────────────────────────────────────────────────────────── */
+    #login-screen {
+      position: fixed; inset: 0; z-index: 100;
+      background: radial-gradient(ellipse at 30% 50%, #13132B 0%, #0D0D1A 70%);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .login-card {
+      background: #13132B;
+      border: 1px solid #C9A84C44;
+      border-radius: 20px;
+      padding: 40px;
+      width: 100%; max-width: 400px;
+      box-shadow: 0 0 60px #C9A84C11;
+    }
+
+    /* ── Scrollbar ───────────────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: #0D0D1A; }
+    ::-webkit-scrollbar-thumb { background: #1E1E40; border-radius: 4px; }
+
+    /* ── Badge ───────────────────────────────────────────────────────────────── */
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 999px;
+      font-size: 0.7rem; font-weight: 600;
+    }
+    .badge-income  { background: #22C55E22; color: #22C55E; border: 1px solid #22C55E44; }
+    .badge-expense { background: #EF444422; color: #EF4444; border: 1px solid #EF444444; }
+
+    /* ── Notification Toast ──────────────────────────────────────────────────── */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px; z-index: 999;
+      background: #13132B; border: 1px solid #C9A84C;
+      border-radius: 10px; padding: 12px 20px;
+      display: none; font-size: 0.85rem; color: #C9A84C;
+      box-shadow: 0 4px 20px #C9A84C22;
+    }
+
+    /* ── Mobile responsive ───────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      #sidebar { transform: translateX(-240px); }
+      #sidebar.open { transform: translateX(0); }
+      #main-content { margin-left: 0 !important; }
+      #overlay { display: block; }
+    }
+    #overlay {
+      display: none; position: fixed; inset: 0;
+      background: #00000066; z-index: 30;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════════════════
+     LOGIN SCREEN
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-card">
+    <!-- Logo -->
+    <div class="text-center mb-8">
+      <h1 class="font-display text-4xl font-black logo-glow text-gold">DELVALLE</h1>
+      <p class="text-slate-400 text-sm mt-2 tracking-widest uppercase">Sistema Integrado</p>
+    </div>
+
+    <!-- Error msg -->
+    <div id="login-error" class="hidden bg-red-900/30 border border-red-500/40 text-red-400
+         text-sm rounded-lg p-3 mb-4 text-center"></div>
+
+    <!-- Email -->
+    <div class="mb-4">
+      <label class="block text-xs text-slate-400 mb-1 uppercase tracking-wider">E-mail</label>
+      <input id="login-email" type="email" class="dv-input" placeholder="seu@email.com" />
+    </div>
+    <!-- Password -->
+    <div class="mb-6">
+      <label class="block text-xs text-slate-400 mb-1 uppercase tracking-wider">Senha</label>
+      <input id="login-password" type="password" class="dv-input" placeholder="••••••••" />
+    </div>
+
+    <button onclick="doLogin()" class="btn-gold w-full py-3 text-base rounded-xl">
+      <i class="fas fa-unlock-alt mr-2"></i> Entrar no DELVALLE
+    </button>
+
+    <p class="text-center text-xs text-slate-500 mt-4">
+      Protegido por Firebase Authentication
+    </p>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════════
+     OVERLAY (mobile sidebar backdrop)
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="overlay" onclick="closeSidebar()"></div>
+
+<!-- ════════════════════════════════════════════════════════════════════════════
+     SIDEBAR
+════════════════════════════════════════════════════════════════════════════ -->
+<nav id="sidebar" class="closed">
+  <!-- Brand -->
+  <div class="p-5 border-b border-dkbg-border">
+    <h1 class="font-display text-xl font-black logo-glow text-gold">DELVALLE</h1>
+    <p class="text-slate-500 text-xs mt-1 tracking-widest">Sistema Integrado</p>
+  </div>
+
+  <!-- User info -->
+  <div class="p-4 border-b border-dkbg-border flex items-center gap-3">
+    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-gold to-lilac
+         flex items-center justify-center text-dkbg font-bold text-sm" id="user-avatar">D</div>
+    <div>
+      <p class="text-sm font-semibold text-white" id="user-name">Usuário</p>
+      <p class="text-xs text-slate-400" id="user-email-display">—</p>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <div class="p-3 space-y-1">
+    <div class="nav-item active" onclick="showSection('dashboard')">
+      <i class="fas fa-th-large"></i> Dashboard
+    </div>
+    <div class="nav-item" onclick="showSection('financeiro')">
+      <i class="fas fa-wallet"></i> Financeiro
+    </div>
+    <div class="nav-item" onclick="showSection('freelancer')">
+      <i class="fas fa-motorcycle"></i> Freelancer / Rotas
+    </div>
+    <div class="nav-item" onclick="showSection('metas')">
+      <i class="fas fa-bullseye"></i> Metas
+    </div>
+    <div class="nav-item" onclick="showSection('fixos')">
+      <i class="fas fa-file-invoice-dollar"></i> Gastos Fixos
+    </div>
+    <div class="nav-item" onclick="showSection('saude')">
+      <i class="fas fa-heartbeat"></i> Saúde & Hábitos
+    </div>
+    <div class="nav-item" onclick="showSection('produtividade')">
+      <i class="fas fa-clock"></i> Produtividade
+    </div>
+    <div class="nav-item" onclick="showSection('motivacao')">
+      <i class="fas fa-star"></i> Motivação
+    </div>
+    <div class="nav-item" onclick="showSection('notas')">
+      <i class="fas fa-sticky-note"></i> Notas
+    </div>
+  </div>
+
+  <!-- Logout -->
+  <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-dkbg-border">
+    <button onclick="doLogout()" class="nav-item w-full text-red-400 hover:text-red-300">
+      <i class="fas fa-sign-out-alt"></i> Sair
+    </button>
+  </div>
+</nav>
+
+<!-- ════════════════════════════════════════════════════════════════════════════
+     MAIN CONTENT
+════════════════════════════════════════════════════════════════════════════ -->
+<div id="main-content" class="full min-h-screen">
+
+  <!-- Top Bar -->
+  <header class="sticky top-0 z-20 bg-dkbg/90 backdrop-blur border-b border-dkbg-border
+       px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <button onclick="toggleSidebar()" class="text-slate-400 hover:text-gold transition-colors">
+        <i class="fas fa-bars text-lg"></i>
+      </button>
+      <span id="section-title" class="font-semibold text-white text-sm md:text-base">Dashboard</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <div id="live-clock">00:00:00</div>
+      <div id="alert-btn" onclick="toggleAlerts()"
+           class="cursor-pointer text-slate-400 hover:text-gold transition-colors relative"
+           title="Alertas periódicos">
+        <i class="fas fa-bell text-lg"></i>
+        <span id="alert-dot" class="hidden absolute -top-1 -right-1 w-2 h-2
+             bg-gold rounded-full"></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Sections container ────────────────────────────────────────────────── -->
+  <main class="p-4 md:p-6 max-w-5xl mx-auto">
+
+    <!-- ─── DASHBOARD ─────────────────────────────────────────────────────── -->
+    <div id="sec-dashboard" class="section active">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h2 class="font-display text-2xl font-bold logo-glow text-gold">DELVALLE</h2>
+          <p class="text-slate-400 text-sm" id="dash-date">—</p>
+        </div>
+        <div class="text-right">
+          <p class="text-xs text-slate-500 uppercase tracking-wider">Saldo Hoje</p>
+          <p id="dash-balance" class="text-2xl font-bold text-income">R$ 0,00</p>
+        </div>
+      </div>
+
+      <!-- Summary Cards -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div class="stat-card stat-income">
+          <p class="text-xs text-slate-400 mb-1">Ganhos (Mês)</p>
+          <p id="dash-month-income" class="text-lg font-bold text-income">R$ 0,00</p>
+        </div>
+        <div class="stat-card stat-expense">
+          <p class="text-xs text-slate-400 mb-1">Gastos (Mês)</p>
+          <p id="dash-month-expense" class="text-lg font-bold text-expense">R$ 0,00</p>
+        </div>
+        <div class="stat-card stat-gold">
+          <p class="text-xs text-slate-400 mb-1">Água Hoje</p>
+          <p id="dash-water" class="text-lg font-bold text-blue">0 / 8 copos</p>
+        </div>
+        <div class="stat-card stat-lilac">
+          <p class="text-xs text-slate-400 mb-1">Meta Mensal</p>
+          <p id="dash-goal-pct" class="text-lg font-bold text-lilac">0%</p>
+        </div>
+      </div>
+
+      <!-- Motivational Message -->
+      <div id="dash-motivation" class="card card-gold mb-6">
+        <div class="flex items-start gap-3">
+          <i class="fas fa-robot text-gold text-xl mt-1"></i>
+          <div>
+            <p class="text-xs text-slate-400 uppercase tracking-wider mb-1">Análise do Dia</p>
+            <p id="dash-motivation-text" class="text-slate-300 text-sm leading-relaxed">
+              Carregando sua análise personalizada...
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Transactions -->
+      <div class="card card-gold mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold text-gold text-sm uppercase tracking-wider">
+            <i class="fas fa-history mr-2"></i>Últimas Transações
+          </h3>
+          <button onclick="showSection('financeiro')" class="text-xs text-slate-400 hover:text-gold">
+            Ver todas →
+          </button>
+        </div>
+        <div id="dash-recent-tx">
+          <p class="text-slate-500 text-sm text-center py-4">Nenhuma transação ainda.</p>
+        </div>
+      </div>
+
+      <!-- Mini Calendar + Productivity -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="card card-lilac">
+          <h3 class="font-semibold text-lilac text-sm uppercase tracking-wider mb-3">
+            <i class="fas fa-calendar mr-2"></i>Calendário
+          </h3>
+          <div id="mini-calendar"></div>
+        </div>
+        <div class="card card-health">
+          <h3 class="font-semibold text-health text-sm uppercase tracking-wider mb-3">
+            <i class="fas fa-heartbeat mr-2"></i>Saúde Hoje
+          </h3>
+          <div class="space-y-3">
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-400">Água</span>
+                <span id="dash-water-label" class="text-blue-light">0 / 8</span>
+              </div>
+              <div class="progress-bar">
+                <div id="dash-water-bar" class="progress-fill water" style="width:0%"></div>
+              </div>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Peso atual</p>
+              <p id="dash-weight" class="text-white font-semibold">—</p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 mb-1">Último registro alimentar</p>
+              <p id="dash-food" class="text-slate-300 text-sm">—</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── FINANCEIRO ─────────────────────────────────────────────────────── -->
+    <div id="sec-financeiro" class="section">
+      <h2 class="font-semibold text-white text-lg mb-5">
+        <i class="fas fa-wallet text-gold mr-2"></i>Fluxo de Caixa
+      </h2>
+
+      <!-- Period Summary -->
+      <div class="grid grid-cols-3 gap-3 mb-5">
+        <div class="stat-card stat-gold text-center">
+          <p class="text-xs text-slate-400 mb-1">Hoje</p>
+          <p id="sum-day" class="text-base font-bold text-white">R$ 0,00</p>
+        </div>
+        <div class="stat-card stat-lilac text-center">
+          <p class="text-xs text-slate-400 mb-1">Semana</p>
+          <p id="sum-week" class="text-base font-bold text-white">R$ 0,00</p>
+        </div>
+        <div class="stat-card stat-income text-center">
+          <p class="text-xs text-slate-400 mb-1">Mês</p>
+          <p id="sum-month" class="text-base font-bold text-white">R$ 0,00</p>
+        </div>
+      </div>
+
+      <!-- Add Transaction -->
+      <div class="card card-gold mb-5">
+        <h3 class="text-sm font-semibold text-gold uppercase tracking-wider mb-4">
+          <i class="fas fa-plus mr-2"></i>Nova Transação
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Descrição</label>
+            <input id="tx-desc" type="text" class="dv-input" placeholder="Ex: Mercado, iFood..." />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Valor (R$)</label>
+            <input id="tx-value" type="number" step="0.01" class="dv-input" placeholder="0,00" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Categoria</label>
+            <select id="tx-category" class="dv-input">
+              <option value="">Selecione...</option>
+              <option>Alimentação</option><option>Aluguel</option>
+              <option>Água</option><option>Luz</option>
+              <option>Financiamento</option><option>Passagens</option>
+              <option>Saúde</option><option>Lazer</option>
+              <option>Freelancer</option><option>Salário</option>
+              <option>Outros</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Data</label>
+            <input id="tx-date" type="date" class="dv-input" />
+          </div>
+        </div>
+        <div class="flex gap-3 mt-4">
+          <button onclick="addTransaction('income')" class="btn-income flex-1">
+            <i class="fas fa-arrow-up mr-2"></i>Ganho
+          </button>
+          <button onclick="addTransaction('expense')" class="flex-1 btn-gold" style="background:linear-gradient(135deg,#EF4444,#F87171)">
+            <i class="fas fa-arrow-down mr-2"></i>Gasto
+          </button>
+        </div>
+      </div>
+
+      <!-- Transaction List -->
+      <div class="card">
+        <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">
+          <i class="fas fa-list mr-2 text-lilac"></i>Histórico
+        </h3>
+
+        <!-- Filter -->
+        <div class="flex gap-2 mb-3 flex-wrap">
+          <select id="filter-period" class="dv-input" style="width:auto" onchange="renderTransactions()">
+            <option value="all">Todos</option>
+            <option value="today">Hoje</option>
+            <option value="week">Semana</option>
+            <option value="month">Mês</option>
+          </select>
+          <select id="filter-type" class="dv-input" style="width:auto" onchange="renderTransactions()">
+            <option value="all">Todos</option>
+            <option value="income">Ganhos</option>
+            <option value="expense">Gastos</option>
+          </select>
+        </div>
+
+        <div id="tx-list">
+          <p class="text-slate-500 text-sm text-center py-4">Nenhuma transação.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── FREELANCER ─────────────────────────────────────────────────────── -->
+    <div id="sec-freelancer" class="section">
+      <h2 class="font-semibold text-white text-lg mb-5">
+        <i class="fas fa-motorcycle text-gold mr-2"></i>Painel Freelancer / Entregador
+      </h2>
+
+      <div class="card card-gold mb-5">
+        <h3 class="text-sm font-semibold text-gold uppercase tracking-wider mb-4">
+          <i class="fas fa-plus mr-2"></i>Registrar Trabalho
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Local / Plataforma</label>
+            <input id="fl-local" type="text" class="dv-input"
+                   placeholder="Ex: iFood, Restaurante X..." />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Horas trabalhadas</label>
+            <input id="fl-hours" type="number" step="0.5" class="dv-input" placeholder="Ex: 4.5" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Valor arrecadado (R$)</label>
+            <input id="fl-value" type="number" step="0.01" class="dv-input" placeholder="0,00" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Data</label>
+            <input id="fl-date" type="date" class="dv-input" />
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-xs text-slate-400 mb-1">Observações</label>
+            <input id="fl-notes" type="text" class="dv-input"
+                   placeholder="Notas rápidas sobre o dia..." />
+          </div>
+        </div>
+        <button onclick="addFreelancerEntry()" class="btn-gold mt-4">
+          <i class="fas fa-save mr-2"></i>Salvar Registro
+        </button>
+      </div>
+
+      <!-- Summary Stats -->
+      <div class="grid grid-cols-3 gap-3 mb-5">
+        <div class="stat-card stat-income text-center">
+          <p class="text-xs text-slate-400 mb-1">Hoje</p>
+          <p id="fl-today-val" class="text-base font-bold text-income">R$ 0,00</p>
+          <p id="fl-today-hrs" class="text-xs text-slate-400">0h</p>
+        </div>
+        <div class="stat-card stat-gold text-center">
+          <p class="text-xs text-slate-400 mb-1">Semana</p>
+          <p id="fl-week-val" class="text-base font-bold text-gold">R$ 0,00</p>
+          <p id="fl-week-hrs" class="text-xs text-slate-400">0h</p>
+        </div>
+        <div class="stat-card stat-lilac text-center">
+          <p class="text-xs text-slate-400 mb-1">Mês</p>
+          <p id="fl-month-val" class="text-base font-bold text-lilac">R$ 0,00</p>
+          <p id="fl-month-hrs" class="text-xs text-slate-400">0h</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">
+          <i class="fas fa-history mr-2 text-gold"></i>Histórico de Trabalho
+        </h3>
+        <div id="fl-list">
+          <p class="text-slate-500 text-sm text-center py-4">Nenhum registro ainda.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── METAS ──────────────────────────────────────────────────────────── -->
+    <div id="sec-metas" class="section">
+      <h2 class="font-semibold text-white text-lg mb-5">
+        <i class="fas fa-bullseye text-gold mr-2"></i>Metas Financeiras
+      </h2>
+
+      <!-- Set Goals -->
+      <div class="card card-gold mb-5">
+        <h3 class="text-sm font-semibold text-gold uppercase tracking-wider mb-4">
+          <i class="fas fa-edit mr-2"></i>Definir Metas
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Meta Diária (R$)</label>
+            <input id="goal-day" type="number" class="dv-input" placeholder="Ex: 150" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Meta Semanal (R$)</label>
+            <input id="goal-week" type="number" class="dv-input" placeholder="Ex: 800" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Meta Mensal (R$)</label>
+            <input id="goal-month" type="number" class="dv-input" placeholder="Ex: 3000" />
+          </div>
+        </div>
+        <button onclick="saveGoals()" class="btn-gold mt-4">
+          <i class="fas fa-save mr-2"></i>Salvar Metas
+        </button>
+      </div>
+
+      <!-- Progress Cards -->
+      <div class="space-y-4">
+        <!-- Daily -->
+        <div class="card card-gold">
+          <div class="flex justify-between items-center mb-2">
+            <span class="font-semibold text-sm">Meta Diária</span>
+            <span id="goal-day-label" class="text-xs text-gold">R$ 0 / R$ 0</span>
+          </div>
+          <div class="progress-bar mb-2">
+            <div id="goal-day-bar" class="progress-fill" style="width:0%"></div>
+          </div>
+          <p id="goal-day-msg" class="text-xs text-slate-400"></p>
+        </div>
+        <!-- Weekly -->
+        <div class="card card-lilac">
+          <div class="flex justify-between items-center mb-2">
+            <span class="font-semibold text-sm">Meta Semanal</span>
+            <span id="goal-week-label" class="text-xs text-lilac">R$ 0 / R$ 0</span>
+          </div>
+          <div class="progress-bar mb-2">
+            <div id="goal-week-bar" class="progress-fill" style="width:0%"></div>
+          </div>
+          <p id="goal-week-msg" class="text-xs text-slate-400"></p>
+        </div>
+        <!-- Monthly -->
+        <div class="card" style="border-color:#9B7FD466">
+          <div class="flex justify-between items-center mb-2">
+            <span class="font-semibold text-sm">Meta Mensal</span>
+            <span id="goal-month-label" class="text-xs text-lilac">R$ 0 / R$ 0</span>
+          </div>
+          <div class="progress-bar mb-2">
+            <div id="goal-month-bar" class="progress-fill" style="width:0%"></div>
+          </div>
+          <p id="goal-month-msg" class="text-xs text-slate-400"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── GASTOS FIXOS ───────────────────────────────────────────────────── -->
+    <div id="sec-fixos" class="section">
+      <h2 class="font-semibold text-white text-lg mb-5">
+        <i class="fas fa-file-invoice-dollar text-gold mr-2"></i>Contas Fixas
+      </h2>
+
+      <div class="card card-gold mb-5">
+        <h3 class="text-sm font-semibold text-gold uppercase tracking-wider mb-4">
+          <i class="fas fa-plus mr-2"></i>Adicionar Conta Fixa
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Nome da Conta</label>
+            <input id="fix-name" type="text" class="dv-input"
+                   placeholder="Ex: Aluguel, Luz..." />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Valor (R$)</label>
+            <input id="fix-value" type="number" step="0.01" class="dv-input" placeholder="0,00" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Dia de Vencimento</label>
+            <input id="fix-due" type="number" min="1" max="31" class="dv-input"
+                   placeholder="Ex: 10" />
+          </div>
+        </div>
+        <button onclick="addFixedExpense()" class="btn-gold mt-4">
+          <i class="fas fa-save mr-2"></i>Salvar
+        </button>
+      </div>
+
+      <!-- Total -->
+      <div class="stat-card stat-expense mb-5 text-center">
+        <p class="text-xs text-slate-400 mb-1">Total Fixo Mensal</p>
+        <p id="fix-total" class="text-2xl font-bold text-expense">R$ 0,00</p>
+      </div>
+
+      <div class="card">
+        <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">
+          <i class="fas fa-list mr-2 text-expense"></i>Minhas Contas Fixas
+        </h3>
+        <div id="fix-list">
+          <p class="text-slate-500 text-sm text-center py-4">Nenhuma conta cadastrada.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── SAÚDE ──────────────────────────────────────────────────────────── -->
+    <div id="sec-saude" class="section">
+      <h2 class="font-semibold text-white text-lg mb-5">
+        <i class="fas fa-heartbeat text-health mr-2"></i>Saúde & Hábitos
+      </h2>
+
+      <!-- Physical Stats -->
+      <div class="card card-health mb-5">
+        <h3 class="text-sm font-semibold text-health uppercase tracking-wider mb-4">
+          <i class="fas fa-user-circle mr-2"></i>Medidas Físicas
+        </h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Peso (kg)</label>
+            <input id="health-weight" type="number" step="0.1" class="dv-input" placeholder="70.0" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Altura (cm)</label>
+            <input id="health-height" type="number" class="dv-input" placeholder="175" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">IMC</label>
+            <div class="dv-input bg-dkbg text-slate-300" id="imc-display"
+                 style="display:flex;align-items:center">—</div>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Classificação</label>
+            <div class="dv-input bg-dkbg" id="imc-class"
+                 style="display:flex;align-items:center">—</div>
+          </div>
+        </div>
+        <button onclick="saveHealth()" class="btn-gold mt-4">
+          <i class="fas fa-save mr-2"></i>Salvar Medidas
+        </button>
+      </div>
+
+      <!-- Water Tracking -->
+      <div class="card card-health mb-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-sm font-semibold text-health uppercase tracking-wider">
+            <i class="fas fa-tint mr-2"></i>Água do Dia
+          </h3>
+          <div class="flex items-center gap-2">
+            <span id="water-count" class="text-2xl font-bold text-blue">0</span>
+            <span class="text-slate-400 text-sm">/ 8 copos</span>
+          </div>
+        </div>
+        <div class="progress-bar mb-4">
+          <div id="water-bar" class="progress-fill water" style="width:0%"></div>
+        </div>
+        <div id="water-cups" class="flex gap-2 flex-wrap justify-center mb-3">
+          <!-- Cups rendered by JS -->
+        </div>
+        <div class="flex gap-3 justify-center">
+          <button onclick="addWater()" class="btn-outline" style="border-color:#3B82F6;color:#3B82F6">
+            <i class="fas fa-plus mr-1"></i> Beber Água
+          </button>
+          <button onclick="removeWater()" class="btn-danger">
+            <i class="fas fa-minus mr-1"></i> Remover
+          </button>
+        </div>
+      </div>
+
+      <!-- Food Diary -->
+      <div class="card card-health">
+        <h3 class="text-sm font-semibold text-health uppercase tracking-wider mb-4">
+          <i class="fas fa-utensils mr-2"></i>Diário Alimentar
+        </h3>
+        <div class="flex gap-2 mb-3">
+          <input id="food-entry" type="text" class="dv-input"
+                 placeholder="O que você comeu? Ex: Arroz, feijão, frango grelhado..." />
+          <button onclick="addFoodEntry()" class="btn-gold whitespace-nowrap">
+            <i class="fas fa-plus"></i>
+          </button>
+        </div>
+        <div id="food-list" class="space-y-2">
+          <p class="text-slate-500 text-sm text-center py-2">Nenhum registro hoje.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── PRODUTIVIDADE ──────────────────────────────────────────────────── -->
+    <div id="sec-produtividade" class="section">
+      <h2 class="font-semibold text-white text-lg mb-5">
+        <i class="fas fa-clock text-lilac mr-2"></i>Produtividade & Tempo
+      </h2>
+
+      <!-- Time Entries -->
+      <div class="card card-lilac mb-5">
+        <h3 class="text-sm font-semibold text-lilac uppercase tracking-wider mb-4">
+          <i class="fas fa-stopwatch mr-2"></i>Registrar Atividade
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Atividade</label>
+            <input id="prod-activity" type="text" class="dv-input"
+                   placeholder="Ex: Leitura, Procrastinação..." />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Horas gastas</label>
+            <input id="prod-hours" type="number" step="0.25" class="dv-input"
+                   placeholder="Ex: 1.5" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Tipo</label>
+            <select id="prod-type" class="dv-input">
+              <option value="productive">Produtivo</option>
+              <option value="lost">Tempo perdido</option>
+              <option value="learning">Aprendizado</option>
+              <option value="rest">Descanso</option>
+            </select>
+          </div>
+        </div>
+        <button onclick="addProductivityEntry()" class="btn-gold mt-4">
+          <i class="fas fa-save mr-2"></i>Registrar
+        </button>
+      </div>
+
+      <!-- Summary -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+        <div class="stat-card stat-income text-center">
+          <p class="text-xs text-slate-400 mb-1">Produtivo</p>
+          <p id="prod-sum-productive" class="text-lg font-bold text-income">0h</p>
+        </div>
+        <div class="stat-card stat-expense text-center">
+          <p class="text-xs text-slate-400 mb-1">Perdido</p>
+          <p id="prod-sum-lost" class="text-lg font-bold text-expense">0h</p>
+        </div>
+        <div class="stat-card stat-gold text-center">
+          <p class="text-xs text-slate-400 mb-1">Aprendizado</p>
+          <p id="prod-sum-learning" class="text-lg font-bold text-gold">0h</p>
+        </div>
+        <div class="stat-card stat-lilac text-center">
+          <p class="text-xs text-slate-400 mb-1">Descanso</p>
+          <p id="prod-sum-rest" class="text-lg font-bold text-lilac">0h</p>
+        </div>
+      </div>
+
+      <!-- Alerts Config -->
+      <div class="card card-lilac mb-5">
+        <h3 class="text-sm font-semibold text-lilac uppercase tracking-wider mb-4">
+          <i class="fas fa-bell mr-2"></i>Alertas Periódicos
+        </h3>
+        <div class="flex items-center gap-4 flex-wrap">
+          <select id="alert-interval" class="dv-input" style="width:auto">
+            <option value="30">A cada 30 min</option>
+            <option value="45">A cada 45 min</option>
+            <option value="60" selected>A cada 1 hora</option>
+            <option value="90">A cada 90 min</option>
+            <option value="120">A cada 2 horas</option>
+          </select>
+          <button onclick="startAlerts()" class="btn-outline" style="border-color:#9B7FD4;color:#9B7FD4">
+            <i class="fas fa-play mr-2"></i>Ativar Alertas
+          </button>
+          <button onclick="stopAlerts()" class="btn-danger">
+            <i class="fas fa-stop mr-1"></i> Parar
+          </button>
+          <span id="alert-status" class="text-xs text-slate-400">Inativo</span>
+        </div>
+      </div>
+
+      <!-- Productivity List -->
+      <div class="card">
+        <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">
+          <i class="fas fa-list mr-2 text-lilac"></i>Atividades de Hoje
+        </h3>
+        <div id="prod-list">
+          <p class="text-slate-500 text-sm text-center py-4">Nenhuma atividade registrada.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── MOTIVAÇÃO ─────────────────────────────────────────────────────── -->
+    <div id="sec-motivacao" class="section">
+      <h2 class="font-semibold text-white text-lg mb-5">
+        <i class="fas fa-star text-gold mr-2"></i>Motivação & Espiritualidade
+      </h2>
+
+      <!-- Daily Verse -->
+      <div class="verse-card mb-6">
+        <p class="text-xs text-lilac uppercase tracking-wider mb-3">
+          <i class="fas fa-book-open mr-2"></i>Versículo do Dia
+        </p>
+        <p id="verse-text" class="text-white text-base leading-relaxed mb-2 relative z-10">
+          Carregando...
+        </p>
+        <p id="verse-ref" class="text-lilac text-sm font-semibold">—</p>
+        <button onclick="nextVerse()" class="btn-outline mt-4"
+                style="border-color:#9B7FD4;color:#9B7FD4">
+          <i class="fas fa-random mr-2"></i>Outro Versículo
+        </button>
+      </div>
+
+      <!-- AI Analysis -->
+      <div class="card card-gold mb-6">
+        <div class="flex items-center gap-2 mb-4">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-br from-gold to-lilac
+               flex items-center justify-center">
+            <i class="fas fa-robot text-dkbg text-sm"></i>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-white">Análise Inteligente do Dia</p>
+            <p class="text-xs text-slate-400">Baseada nos seus dados de hoje</p>
+          </div>
+        </div>
+        <div id="ai-analysis" class="space-y-3">
+          <p class="text-slate-300 text-sm leading-relaxed" id="ai-text">
+            Registre dados nos outros módulos para receber sua análise personalizada.
+          </p>
+        </div>
+        <button onclick="generateAnalysis()" class="btn-gold mt-4">
+          <i class="fas fa-sync-alt mr-2"></i>Gerar Análise
+        </button>
+      </div>
+
+      <!-- Motivational Quote -->
+      <div class="card card-lilac">
+        <h3 class="text-sm font-semibold text-lilac uppercase tracking-wider mb-3">
+          <i class="fas fa-quote-left mr-2"></i>Frase Motivacional
+        </h3>
+        <p id="motivational-quote" class="text-white text-sm leading-relaxed italic">
+          Carregando...
+        </p>
+        <button onclick="nextQuote()" class="text-xs text-lilac hover:text-lilac-light mt-3
+             transition-colors">
+          Próxima frase →
+        </button>
+      </div>
+    </div>
+
+    <!-- ─── NOTAS ──────────────────────────────────────────────────────────── -->
+    <div id="sec-notas" class="section">
+      <h2 class="font-semibold text-white text-lg mb-5">
+        <i class="fas fa-sticky-note text-gold mr-2"></i>Bloco de Notas
+      </h2>
+
+      <div class="card card-gold mb-4">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-semibold text-gold uppercase tracking-wider">
+            Nota de Hoje — <span id="note-date-label" class="text-white normal-case
+            font-normal tracking-normal"></span>
+          </h3>
+          <span class="text-xs text-slate-500" id="note-save-status">Salvo ✓</span>
+        </div>
+        <textarea id="note-content" rows="12" class="dv-input resize-none leading-relaxed"
+                  placeholder="Anote aqui seus pensamentos, planos, ideias do dia...
+                  
+• O que quero fazer hoje?
+• Como estou me sentindo?
+• O que aprendi?"
+                  oninput="autoSaveNote()"></textarea>
+      </div>
+
+      <!-- Previous Notes -->
+      <div class="card">
+        <h3 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3">
+          <i class="fas fa-history mr-2 text-lilac"></i>Notas Anteriores
+        </h3>
+        <div id="notes-history" class="space-y-2">
+          <p class="text-slate-500 text-sm text-center py-3">Nenhuma nota anterior.</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast"><i class="fas fa-bell mr-2"></i><span id="toast-msg">Lembre-se!</span></div>
+
+<!-- ════════════════════════════════════════════════════════════════════════════
+     FIREBASE SDK
+════════════════════════════════════════════════════════════════════════════ -->
+<!-- Firebase App (compat) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// FIREBASE CONFIGURATION
+// ▶ Substitua os valores abaixo pelas suas credenciais do Firebase Console
+// ═══════════════════════════════════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey:            "SUA_API_KEY_AQUI",
+  authDomain:        "SEU_AUTH_DOMAIN.firebaseapp.com",
+  projectId:         "SEU_PROJECT_ID",
+  storageBucket:     "SEU_BUCKET.appspot.com",
+  messagingSenderId: "SEU_SENDER_ID",
+  appId:             "SEU_APP_ID"
+};
+
+// Inicializar Firebase
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════════
+let currentUser  = null;
+let userDocRef   = null;
+let alertTimer   = null;
+let noteTimer    = null;
+let currentVerseIdx = 0;
+let currentQuoteIdx = 0;
+
+// Local Data (synced with Firestore)
+let appData = {
+  transactions:   [],
+  freelancer:     [],
+  fixedExpenses:  [],
+  goals:          { day: 0, week: 0, month: 0 },
+  health:         { weight: 0, height: 0 },
+  water:          0,
+  food:           [],
+  productivity:   [],
+  notes:          {},   // { 'YYYY-MM-DD': 'text' }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+const todayStr = () => new Date().toISOString().split('T')[0];
+
+const fmtCurrency = v =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+
+const fmtDate = d =>
+  new Date(d + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+
+function showToast(msg, duration = 4000) {
+  const t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => { t.style.display = 'none'; }, duration);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FIRESTORE — SAVE & LOAD
+// ═══════════════════════════════════════════════════════════════════════════════
+async function saveToFirestore() {
+  if (!userDocRef) return;
+  try {
+    await userDocRef.set(appData, { merge: true });
+  } catch (e) { console.warn('Save error:', e); }
+}
+
+async function loadFromFirestore() {
+  if (!userDocRef) return;
+  try {
+    const doc = await userDocRef.get();
+    if (doc.exists) {
+      const d = doc.data();
+      appData = {
+        transactions:  d.transactions  || [],
+        freelancer:    d.freelancer    || [],
+        fixedExpenses: d.fixedExpenses || [],
+        goals:         d.goals         || { day: 0, week: 0, month: 0 },
+        health:        d.health        || { weight: 0, height: 0 },
+        water:         d.water         !== undefined ? d.water : 0,
+        food:          d.food          || [],
+        productivity:  d.productivity  || [],
+        notes:         d.notes         || {},
+      };
+    }
+    renderAll();
+  } catch (e) { console.warn('Load error:', e); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════════════════════════
+auth.onAuthStateChanged(user => {
+  if (user) {
+    currentUser  = user;
+    userDocRef   = db.collection('users').doc(user.uid);
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('user-name').textContent = user.displayName || 'Usuário';
+    document.getElementById('user-email-display').textContent = user.email;
+    document.getElementById('user-avatar').textContent =
+      (user.displayName || user.email || 'D')[0].toUpperCase();
+    toggleSidebar(); // open sidebar
+    loadFromFirestore();
+    startClock();
+    renderCalendar();
+    loadDailyVerse();
+    loadMotivationalQuote();
+    loadDailyNote();
+  } else {
+    currentUser = null;
+    document.getElementById('login-screen').style.display = 'flex';
+  }
+});
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.classList.add('hidden');
+  try {
+    await auth.signInWithEmailAndPassword(email, pass);
+  } catch (e) {
+    errEl.classList.remove('hidden');
+    errEl.textContent = 'Credenciais inválidas. Verifique e-mail e senha.';
+  }
+}
+
+function doLogout() {
+  auth.signOut();
+  document.getElementById('sidebar').classList.add('closed');
+  document.getElementById('main-content').classList.add('full');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════════════════════
+const sectionTitles = {
+  dashboard:    'Dashboard',
+  financeiro:   'Fluxo de Caixa',
+  freelancer:   'Freelancer / Rotas',
+  metas:        'Metas Financeiras',
+  fixos:        'Contas Fixas',
+  saude:        'Saúde & Hábitos',
+  produtividade:'Produtividade',
+  motivacao:    'Motivação & Espiritualidade',
+  notas:        'Bloco de Notas',
+};
+
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('sec-' + id).classList.add('active');
+  document.getElementById('section-title').textContent = sectionTitles[id] || id;
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.getAttribute('onclick') && n.getAttribute('onclick').includes("'" + id + "'"))
+      n.classList.add('active');
+  });
+  // Close sidebar on mobile
+  if (window.innerWidth < 768) closeSidebar();
+  // Section-specific on-enter
+  if (id === 'notas') loadDailyNote();
+  if (id === 'dashboard') updateDashboard();
+  if (id === 'metas') updateGoalBars();
+}
+
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const mc = document.getElementById('main-content');
+  const ov = document.getElementById('overlay');
+  if (window.innerWidth >= 768) {
+    sb.classList.toggle('closed');
+    mc.classList.toggle('full');
+  } else {
+    sb.classList.toggle('open');
+    ov.style.display = sb.classList.contains('open') ? 'block' : 'none';
+  }
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CLOCK
+// ═══════════════════════════════════════════════════════════════════════════════
+function startClock() {
+  setInterval(() => {
+    const now = new Date();
+    document.getElementById('live-clock').textContent =
+      now.toLocaleTimeString('pt-BR');
+    document.getElementById('dash-date').textContent =
+      now.toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  }, 1000);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FINANCIAL — TRANSACTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+function addTransaction(type) {
+  const desc  = document.getElementById('tx-desc').value.trim();
+  const value = parseFloat(document.getElementById('tx-value').value);
+  const cat   = document.getElementById('tx-category').value;
+  const date  = document.getElementById('tx-date').value || todayStr();
+
+  if (!desc || isNaN(value) || value <= 0) {
+    showToast('Preencha descrição e valor válido!'); return;
+  }
+
+  appData.transactions.push({
+    id: Date.now(), desc, value, type, cat, date
+  });
+
+  // clear
+  document.getElementById('tx-desc').value   = '';
+  document.getElementById('tx-value').value  = '';
+  document.getElementById('tx-category').value = '';
+
+  saveToFirestore();
+  renderTransactions();
+  updateSummary();
+  updateDashboard();
+  showToast(type === 'income' ? `✅ Ganho de ${fmtCurrency(value)} salvo!`
+                              : `🔴 Gasto de ${fmtCurrency(value)} salvo!`);
+}
+
+function deleteTransaction(id) {
+  appData.transactions = appData.transactions.filter(t => t.id !== id);
+  saveToFirestore();
+  renderTransactions();
+  updateSummary();
+  updateDashboard();
+}
+
+function renderTransactions() {
+  const period = document.getElementById('filter-period')?.value || 'all';
+  const type   = document.getElementById('filter-type')?.value   || 'all';
+
+  let list = appData.transactions.filter(t => {
+    const d     = new Date(t.date + 'T12:00:00');
+    const now   = new Date();
+    const today = new Date(todayStr() + 'T12:00:00');
+    const mon   = d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    const dayOk = d.toDateString() === today.toDateString();
+    const wkOk  = (today - d) / 86400000 < 7;
+    if (period === 'today' && !dayOk) return false;
+    if (period === 'week'  && !wkOk)  return false;
+    if (period === 'month' && !mon)   return false;
+    if (type !== 'all' && t.type !== type) return false;
+    return true;
+  }).sort((a, b) => b.id - a.id);
+
+  const el = document.getElementById('tx-list');
+  if (!list.length) {
+    el.innerHTML = '<p class="text-slate-500 text-sm text-center py-4">Nenhuma transação.</p>';
+    return;
+  }
+  el.innerHTML = list.map(t => `
+    <div class="tx-item">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm
+             ${t.type === 'income' ? 'bg-income/20 text-income' : 'bg-expense/20 text-expense'}">
+          <i class="fas ${t.type === 'income' ? 'fa-arrow-up' : 'fa-arrow-down'}"></i>
+        </div>
+        <div>
+          <p class="text-sm font-medium text-white">${t.desc}</p>
+          <p class="text-xs text-slate-400">${t.cat || '—'} · ${fmtDate(t.date)}</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="font-bold ${t.type === 'income' ? 'text-income' : 'text-expense'}">
+          ${t.type === 'income' ? '+' : '-'}${fmtCurrency(t.value)}
+        </span>
+        <button onclick="deleteTransaction(${t.id})" class="btn-danger">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    </div>`).join('');
+}
+
+function getFinancialSums() {
+  const now   = new Date();
+  const today = todayStr();
+
+  let dayIncome = 0, dayExpense = 0;
+  let weekIncome = 0, weekExpense = 0;
+  let monIncome = 0, monExpense = 0;
+
+  appData.transactions.forEach(t => {
+    const d   = new Date(t.date + 'T12:00:00');
+    const dStr = t.date;
+    const isToday = dStr === today;
+    const isWeek  = (new Date(today + 'T12:00:00') - d) / 86400000 < 7;
+    const isMonth = d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+
+    if (isToday) { t.type === 'income' ? dayIncome += t.value : dayExpense += t.value; }
+    if (isWeek)  { t.type === 'income' ? weekIncome += t.value : weekExpense += t.value; }
+    if (isMonth) { t.type === 'income' ? monIncome += t.value : monExpense += t.value; }
+  });
+
+  return { dayIncome, dayExpense, weekIncome, weekExpense, monIncome, monExpense };
+}
+
+function updateSummary() {
+  const s = getFinancialSums();
+  const set = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  };
+  set('sum-day',   fmtCurrency(s.dayIncome - s.dayExpense));
+  set('sum-week',  fmtCurrency(s.weekIncome - s.weekExpense));
+  set('sum-month', fmtCurrency(s.monIncome - s.monExpense));
+  colorBySaldo('sum-day',   s.dayIncome - s.dayExpense);
+  colorBySaldo('sum-week',  s.weekIncome - s.weekExpense);
+  colorBySaldo('sum-month', s.monIncome - s.monExpense);
+}
+
+function colorBySaldo(id, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.color = val >= 0 ? '#22C55E' : '#EF4444';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FREELANCER
+// ═══════════════════════════════════════════════════════════════════════════════
+function addFreelancerEntry() {
+  const local = document.getElementById('fl-local').value.trim();
+  const hours = parseFloat(document.getElementById('fl-hours').value);
+  const value = parseFloat(document.getElementById('fl-value').value);
+  const date  = document.getElementById('fl-date').value || todayStr();
+  const notes = document.getElementById('fl-notes').value.trim();
+
+  if (!local || isNaN(value)) { showToast('Preencha local e valor!'); return; }
+
+  appData.freelancer.push({ id: Date.now(), local, hours: hours || 0, value, date, notes });
+
+  document.getElementById('fl-local').value  = '';
+  document.getElementById('fl-hours').value  = '';
+  document.getElementById('fl-value').value  = '';
+  document.getElementById('fl-notes').value  = '';
+
+  saveToFirestore();
+  renderFreelancer();
+  showToast(`✅ Trabalho de ${fmtCurrency(value)} salvo!`);
+}
+
+function renderFreelancer() {
+  const today = todayStr();
+  const now   = new Date();
+
+  let todayV = 0, todayH = 0, weekV = 0, weekH = 0, monV = 0, monH = 0;
+
+  appData.freelancer.forEach(e => {
+    const d      = new Date(e.date + 'T12:00:00');
+    const isToday = e.date === today;
+    const isWeek  = (new Date(today + 'T12:00:00') - d) / 86400000 < 7;
+    const isMonth = d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+
+    if (isToday) { todayV += e.value; todayH += e.hours; }
+    if (isWeek)  { weekV  += e.value; weekH  += e.hours; }
+    if (isMonth) { monV   += e.value; monH   += e.hours; }
+  });
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('fl-today-val',  fmtCurrency(todayV));
+  set('fl-today-hrs',  todayH.toFixed(1) + 'h');
+  set('fl-week-val',   fmtCurrency(weekV));
+  set('fl-week-hrs',   weekH.toFixed(1) + 'h');
+  set('fl-month-val',  fmtCurrency(monV));
+  set('fl-month-hrs',  monH.toFixed(1) + 'h');
+
+  const sorted = [...appData.freelancer].sort((a, b) => b.id - a.id);
+  const el = document.getElementById('fl-list');
+  if (!sorted.length) {
+    el.innerHTML = '<p class="text-slate-500 text-sm text-center py-4">Nenhum registro.</p>';
+    return;
+  }
+  el.innerHTML = sorted.map(e => `
+    <div class="tx-item">
+      <div>
+        <p class="text-sm font-medium text-white">
+          <i class="fas fa-map-marker-alt text-gold mr-1"></i>${e.local}
+        </p>
+        <p class="text-xs text-slate-400">${fmtDate(e.date)} · ${e.hours}h · ${e.notes || ''}</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="font-bold text-income">${fmtCurrency(e.value)}</span>
+        <button onclick="deleteFreelancer(${e.id})" class="btn-danger">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    </div>`).join('');
+}
+
+function deleteFreelancer(id) {
+  appData.freelancer = appData.freelancer.filter(e => e.id !== id);
+  saveToFirestore(); renderFreelancer();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GOALS
+// ═══════════════════════════════════════════════════════════════════════════════
+function saveGoals() {
+  appData.goals = {
+    day:   parseFloat(document.getElementById('goal-day').value)   || 0,
+    week:  parseFloat(document.getElementById('goal-week').value)  || 0,
+    month: parseFloat(document.getElementById('goal-month').value) || 0,
+  };
+  saveToFirestore();
+  updateGoalBars();
+  showToast('✅ Metas salvas!');
+}
+
+function updateGoalBars() {
+  const s = getFinancialSums();
+  const incomes = {
+    day:   s.dayIncome,
+    week:  s.weekIncome,
+    month: s.monIncome,
+  };
+  ['day', 'week', 'month'].forEach(p => {
+    const goal = appData.goals[p] || 0;
+    const val  = incomes[p];
+    const pct  = goal > 0 ? Math.min((val / goal) * 100, 100) : 0;
+    const set  = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    const bar  = document.getElementById(`goal-${p}-bar`);
+    if (bar) bar.style.width = pct + '%';
+    set(`goal-${p}-label`, `${fmtCurrency(val)} / ${fmtCurrency(goal)}`);
+    const msg = pct >= 100 ? '🏆 Meta atingida!' :
+                pct >= 75  ? `🔥 Quase lá! Faltam ${fmtCurrency(goal - val)}` :
+                pct >= 50  ? `💪 Metade do caminho! Continue!` :
+                             `🎯 Faltam ${fmtCurrency(goal - val)} para atingir a meta.`;
+    set(`goal-${p}-msg`, msg);
+  });
+  // Fill input fields with current goals
+  ['day','week','month'].forEach(p => {
+    const el = document.getElementById(`goal-${p}`);
+    if (el && appData.goals[p]) el.value = appData.goals[p];
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FIXED EXPENSES
+// ═══════════════════════════════════════════════════════════════════════════════
+function addFixedExpense() {
+  const name  = document.getElementById('fix-name').value.trim();
+  const value = parseFloat(document.getElementById('fix-value').value);
+  const due   = parseInt(document.getElementById('fix-due').value);
+
+  if (!name || isNaN(value)) { showToast('Preencha nome e valor!'); return; }
+
+  appData.fixedExpenses.push({ id: Date.now(), name, value, due: due || 1 });
+  document.getElementById('fix-name').value  = '';
+  document.getElementById('fix-value').value = '';
+  document.getElementById('fix-due').value   = '';
+
+  saveToFirestore();
+  renderFixedExpenses();
+  showToast(`✅ Conta ${name} cadastrada!`);
+}
+
+function renderFixedExpenses() {
+  const today = new Date().getDate();
+  const sorted = [...appData.fixedExpenses].sort((a, b) => a.due - b.due);
+  const total = sorted.reduce((acc, e) => acc + e.value, 0);
+
+  const el = document.getElementById('fix-total');
+  if (el) el.textContent = fmtCurrency(total);
+
+  const listEl = document.getElementById('fix-list');
+  if (!sorted.length) {
+    listEl.innerHTML = '<p class="text-slate-500 text-sm text-center py-4">Nenhuma conta.</p>';
+    return;
+  }
+  listEl.innerHTML = sorted.map(e => {
+    const overdue = e.due < today;
+    const soon    = e.due - today <= 3 && e.due >= today;
+    const badgeClass = overdue ? 'text-expense' : soon ? 'text-gold' : 'text-slate-400';
+    const badge = overdue ? '⚠️ Vencida' : soon ? '⏰ Vence em breve' : `Dia ${e.due}`;
+    return `
+    <div class="tx-item">
+      <div>
+        <p class="text-sm font-medium text-white">${e.name}</p>
+        <p class="text-xs ${badgeClass}">${badge}</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="font-bold text-expense">${fmtCurrency(e.value)}</span>
+        <button onclick="deleteFixed(${e.id})" class="btn-danger">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function deleteFixed(id) {
+  appData.fixedExpenses = appData.fixedExpenses.filter(e => e.id !== id);
+  saveToFirestore(); renderFixedExpenses();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HEALTH
+// ═══════════════════════════════════════════════════════════════════════════════
+function saveHealth() {
+  const w = parseFloat(document.getElementById('health-weight').value);
+  const h = parseFloat(document.getElementById('health-height').value);
+  appData.health = { weight: w || 0, height: h || 0 };
+  saveToFirestore();
+  updateIMC();
+  updateDashboard();
+  showToast('✅ Medidas salvas!');
+}
+
+function updateIMC() {
+  const { weight: w, height: h } = appData.health;
+  if (!w || !h) return;
+  const imc = w / Math.pow(h / 100, 2);
+  const cls = imc < 18.5 ? { label: 'Abaixo do peso', color: '#3B82F6' }
+            : imc < 25   ? { label: 'Peso normal 🎉',   color: '#22C55E' }
+            : imc < 30   ? { label: 'Sobrepeso',        color: '#F59E0B' }
+            :               { label: 'Obeso',           color: '#EF4444' };
+  const iEl = document.getElementById('imc-display');
+  const cEl = document.getElementById('imc-class');
+  if (iEl) { iEl.textContent = imc.toFixed(1); iEl.style.color = cls.color; }
+  if (cEl) { cEl.textContent = cls.label; cEl.style.color = cls.color; }
+  // Fill fields
+  const wEl = document.getElementById('health-weight');
+  const hEl = document.getElementById('health-height');
+  if (wEl && w) wEl.value = w;
+  if (hEl && h) hEl.value = h;
+}
+
+// ── Water ────────────────────────────────────────────────────────────────────
+function renderWaterCups() {
+  const c = appData.water || 0;
+  const cups = document.getElementById('water-cups');
+  if (!cups) return;
+  cups.innerHTML = '';
+  for (let i = 0; i < 8; i++) {
+    const filled = i < c;
+    const cup = document.createElement('div');
+    cup.className = `water-cup ${filled ? 'filled' : ''}`;
+    cup.onclick   = () => { appData.water = i + 1; saveAndRenderWater(); };
+    cup.innerHTML = `<div class="fill" style="height:${filled ? '100%' : '0%'}"></div>`;
+    cups.appendChild(cup);
+  }
+  const wc = document.getElementById('water-count');
+  const wb = document.getElementById('water-bar');
+  if (wc) wc.textContent = c;
+  if (wb) wb.style.width = Math.min((c / 8) * 100, 100) + '%';
+}
+
+function addWater() {
+  if (appData.water < 8) appData.water++;
+  saveAndRenderWater();
+}
+function removeWater() {
+  if (appData.water > 0) appData.water--;
+  saveAndRenderWater();
+}
+function saveAndRenderWater() {
+  saveToFirestore(); renderWaterCups(); updateDashboard();
+}
+
+// ── Food Diary ───────────────────────────────────────────────────────────────
+function addFoodEntry() {
+  const entry = document.getElementById('food-entry').value.trim();
+  if (!entry) return;
+  appData.food.push({ id: Date.now(), text: entry, date: todayStr() });
+  document.getElementById('food-entry').value = '';
+  saveToFirestore(); renderFood();
+}
+
+function renderFood() {
+  const today = appData.food.filter(f => f.date === todayStr());
+  const el    = document.getElementById('food-list');
+  if (!el) return;
+  if (!today.length) {
+    el.innerHTML = '<p class="text-slate-500 text-sm text-center py-2">Nenhum registro hoje.</p>';
+    return;
+  }
+  el.innerHTML = today.map(f => `
+    <div class="tx-item">
+      <div class="flex items-center gap-2">
+        <i class="fas fa-utensils text-health text-xs"></i>
+        <p class="text-sm text-white">${f.text}</p>
+      </div>
+      <button onclick="deleteFood(${f.id})" class="btn-danger">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>`).join('');
+}
+
+function deleteFood(id) {
+  appData.food = appData.food.filter(f => f.id !== id);
+  saveToFirestore(); renderFood(); updateDashboard();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PRODUCTIVITY
+// ═══════════════════════════════════════════════════════════════════════════════
+function addProductivityEntry() {
+  const act   = document.getElementById('prod-activity').value.trim();
+  const hours = parseFloat(document.getElementById('prod-hours').value);
+  const type  = document.getElementById('prod-type').value;
+
+  if (!act || isNaN(hours)) { showToast('Preencha atividade e horas!'); return; }
+
+  appData.productivity.push({ id: Date.now(), act, hours, type, date: todayStr() });
+  document.getElementById('prod-activity').value = '';
+  document.getElementById('prod-hours').value    = '';
+
+  saveToFirestore(); renderProductivity();
+  showToast(`✅ Atividade registrada!`);
+}
+
+function renderProductivity() {
+  const today  = appData.productivity.filter(p => p.date === todayStr());
+  const sums   = { productive: 0, lost: 0, learning: 0, rest: 0 };
+  today.forEach(p => { sums[p.type] = (sums[p.type] || 0) + p.hours; });
+
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v + 'h'; };
+  set('prod-sum-productive', sums.productive.toFixed(1));
+  set('prod-sum-lost',       sums.lost.toFixed(1));
+  set('prod-sum-learning',   sums.learning.toFixed(1));
+  set('prod-sum-rest',       sums.rest.toFixed(1));
+
+  const typeLabels = {
+    productive: { label:'Produtivo',  color:'text-income', icon:'fa-check-circle' },
+    lost:       { label:'Perdido',    color:'text-expense', icon:'fa-clock' },
+    learning:   { label:'Aprendizado',color:'text-gold', icon:'fa-book' },
+    rest:       { label:'Descanso',   color:'text-lilac', icon:'fa-bed' },
+  };
+
+  const el = document.getElementById('prod-list');
+  if (!el) return;
+  if (!today.length) {
+    el.innerHTML = '<p class="text-slate-500 text-sm text-center py-4">Nenhuma atividade hoje.</p>';
+    return;
+  }
+  el.innerHTML = today.sort((a,b)=>b.id-a.id).map(p => {
+    const t = typeLabels[p.type] || typeLabels.productive;
+    return `
+    <div class="tx-item">
+      <div class="flex items-center gap-3">
+        <i class="fas ${t.icon} ${t.color}"></i>
+        <div>
+          <p class="text-sm font-medium text-white">${p.act}</p>
+          <span class="badge ${p.type === 'productive' ? 'badge-income' :
+            p.type === 'lost' ? 'badge-expense' : ''}"
+            style="${p.type !== 'productive' && p.type !== 'lost' ? `background:#C9A84C22;color:#C9A84C;border:1px solid #C9A84C44` : ''}"
+          >${t.label}</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="font-bold ${t.color}">${p.hours}h</span>
+        <button onclick="deleteProd(${p.id})" class="btn-danger"><i class="fas fa-trash"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function deleteProd(id) {
+  appData.productivity = appData.productivity.filter(p => p.id !== id);
+  saveToFirestore(); renderProductivity();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ALERTS
+// ═══════════════════════════════════════════════════════════════════════════════
+const alertMessages = [
+  '⏰ Hora de atualizar seus dados no DELVALLE!',
+  '💧 Lembrete: bebeu água hoje?',
+  '💰 Registrou suas finanças do dia?',
+  '📝 Que tal anotar o que fez nas últimas horas?',
+  '🎯 Você está perto da sua meta de hoje?',
+  '🧘 Pausa rápida! Respire fundo e registre seu progresso.',
+];
+
+function startAlerts() {
+  stopAlerts();
+  const min = parseInt(document.getElementById('alert-interval').value);
+  alertTimer = setInterval(() => {
+    const msg = alertMessages[Math.floor(Math.random() * alertMessages.length)];
+    showToast(msg, 7000);
+    playBeep();
+    document.getElementById('alert-dot').classList.remove('hidden');
+  }, min * 60 * 1000);
+  document.getElementById('alert-status').textContent = `Ativo (a cada ${min} min)`;
+  showToast(`🔔 Alertas ativados a cada ${min} minutos!`);
+}
+
+function stopAlerts() {
+  if (alertTimer) { clearInterval(alertTimer); alertTimer = null; }
+  document.getElementById('alert-status').textContent = 'Inativo';
+  document.getElementById('alert-dot').classList.add('hidden');
+}
+
+function toggleAlerts() {
+  if (alertTimer) { stopAlerts(); showToast('🔕 Alertas pausados.'); }
+  else { startAlerts(); }
+}
+
+function playBeep() {
+  try {
+    const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 660; gain.gain.value = 0.3;
+    osc.start(); osc.stop(ctx.currentTime + 0.25);
+    setTimeout(() => {
+      const o2 = ctx.createOscillator(), g2 = ctx.createGain();
+      o2.connect(g2); g2.connect(ctx.destination);
+      o2.frequency.value = 880; g2.gain.value = 0.2;
+      o2.start(); o2.stop(ctx.currentTime + 0.2);
+    }, 300);
+  } catch (e) {}
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CALENDAR
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderCalendar() {
+  const now     = new Date();
+  const year    = now.getFullYear();
+  const month   = now.getMonth();
+  const today   = now.getDate();
+  const first   = new Date(year, month, 1).getDay();
+  const days    = new Date(year, month + 1, 0).getDate();
+
+  const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                      'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  const el = document.getElementById('mini-calendar');
+  if (!el) return;
+
+  let html = `
+    <div class="text-center text-xs font-semibold text-slate-300 mb-2">
+      ${monthNames[month]} ${year}
+    </div>
+    <div class="grid grid-cols-7 gap-1 text-center text-xs text-slate-500 mb-1">
+      ${['D','S','T','Q','Q','S','S'].map(d => `<div>${d}</div>`).join('')}
+    </div>
+    <div class="grid grid-cols-7 gap-1">`;
+
+  for (let i = 0; i < first; i++) html += '<div></div>';
+  for (let d = 1; d <= days; d++) {
+    const isToday = d === today;
+    html += `<div class="cal-day ${isToday ? 'today' : ''}" title="${d}/${month+1}">${d}</div>`;
+  }
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NOTES
+// ═══════════════════════════════════════════════════════════════════════════════
+function loadDailyNote() {
+  const today = todayStr();
+  const el    = document.getElementById('note-content');
+  const label = document.getElementById('note-date-label');
+  if (label) label.textContent = new Date().toLocaleDateString('pt-BR');
+  if (el) el.value = appData.notes[today] || '';
+  renderNotesHistory();
+}
+
+function autoSaveNote() {
+  clearTimeout(noteTimer);
+  noteTimer = setTimeout(() => {
+    appData.notes[todayStr()] = document.getElementById('note-content').value;
+    saveToFirestore();
+    const s = document.getElementById('note-save-status');
+    if (s) { s.textContent = 'Salvo ✓'; s.style.color = '#22C55E'; }
+  }, 1200);
+  const s = document.getElementById('note-save-status');
+  if (s) { s.textContent = 'Salvando...'; s.style.color = '#C9A84C'; }
+}
+
+function renderNotesHistory() {
+  const el = document.getElementById('notes-history');
+  if (!el) return;
+  const entries = Object.entries(appData.notes)
+    .filter(([k, v]) => k !== todayStr() && v.trim())
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .slice(0, 7);
+
+  if (!entries.length) {
+    el.innerHTML = '<p class="text-slate-500 text-sm text-center py-3">Nenhuma nota anterior.</p>';
+    return;
+  }
+  el.innerHTML = entries.map(([date, text]) => `
+    <div class="card p-3 cursor-pointer hover:border-gold/40 transition-colors"
+         onclick="loadOldNote('${date}')">
+      <p class="text-xs text-gold mb-1">${fmtDate(date)}</p>
+      <p class="text-xs text-slate-400 truncate">${text.substring(0, 80)}...</p>
+    </div>`).join('');
+}
+
+function loadOldNote(date) {
+  const el = document.getElementById('note-content');
+  if (el) { el.value = appData.notes[date] || ''; }
+  const label = document.getElementById('note-date-label');
+  if (label) label.textContent = fmtDate(date) + ' (somente leitura)';
+  showToast('Nota de ' + fmtDate(date) + ' carregada.');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VERSES & MOTIVATION
+// ═══════════════════════════════════════════════════════════════════════════════
+const verses = [
+  { text: 'Porque sou eu que conheço os planos que tenho para você, diz o SENHOR, planos de fazê-lo prosperar e não de causar dano, planos de dar a você esperança e um futuro.', ref: 'Jeremias 29:11' },
+  { text: 'Tudo posso naquele que me fortalece.', ref: 'Filipenses 4:13' },
+  { text: 'Mas os que esperam no SENHOR renovam as suas forças. Voam alto como águias; correm e não ficam exaustos, caminham e não se cansam.', ref: 'Isaías 40:31' },
+  { text: 'Entrega o teu caminho ao SENHOR; confia nele, e ele agirá.', ref: 'Salmos 37:5' },
+  { text: 'Sede diligente nos negócios; serve ao Senhor com fervor espiritual.', ref: 'Romanos 12:11' },
+  { text: 'O homem diligente enriquece, mas quem corre atrás de fantasmas acaba na pobreza.', ref: 'Provérbios 28:19' },
+  { text: 'Comprometa com o SENHOR tudo o que você faz e seus planos serão bem-sucedidos.', ref: 'Provérbios 16:3' },
+  { text: 'Que os favores do Senhor nosso Deus repousem sobre nós; estabelece tu a obra das nossas mãos.', ref: 'Salmos 90:17' },
+  { text: 'O trabalho de mãos diligentes traz riqueza, mas a pressa conduz à pobreza.', ref: 'Provérbios 21:5' },
+  { text: 'Não se amolde ao padrão deste mundo, mas transforme-se pela renovação da sua mente.', ref: 'Romanos 12:2' },
+];
+
+const quotes = [
+  'Disciplina é a ponte entre metas e realizações. — Jim Rohn',
+  'Cuide primeiro das necessidades, depois dos desejos — essa é a chave da liberdade financeira.',
+  'Cada real guardado hoje é um passo em direção à sua liberdade amanhã.',
+  'O sucesso é a soma de pequenos esforços repetidos dia após dia. — Robert Collier',
+  'Não é o salário que te enriquece, mas a forma como você usa o dinheiro.',
+  'Sua saúde é seu maior patrimônio. Invista nela todos os dias.',
+  'A procrastinação é o assassino dos sonhos. Comece agora, mesmo que não seja perfeito.',
+  'Hábitos constroem ou destroem — escolha com sabedoria o que você repete todo dia.',
+  'A diferença entre onde você está e onde quer estar é o que você faz hoje.',
+  'Controle o que você pode controlar: suas ações, seus hábitos, sua mentalidade.',
+];
+
+function loadDailyVerse() {
+  const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+  currentVerseIdx = dayOfYear % verses.length;
+  showVerse(currentVerseIdx);
+  currentQuoteIdx = (dayOfYear * 3) % quotes.length;
+  showQuote(currentQuoteIdx);
+}
+
+function showVerse(i) {
+  const v = verses[i];
+  const t = document.getElementById('verse-text');
+  const r = document.getElementById('verse-ref');
+  if (t) t.textContent = v.text;
+  if (r) r.textContent = '— ' + v.ref;
+}
+
+function nextVerse() {
+  currentVerseIdx = (currentVerseIdx + 1) % verses.length;
+  showVerse(currentVerseIdx);
+}
+
+function showQuote(i) {
+  const el = document.getElementById('motivational-quote');
+  if (el) el.textContent = quotes[i];
+}
+
+function nextQuote() {
+  currentQuoteIdx = (currentQuoteIdx + 1) % quotes.length;
+  showQuote(currentQuoteIdx);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AI ANALYSIS (simulated)
+// ═══════════════════════════════════════════════════════════════════════════════
+function generateAnalysis() {
+  const s      = getFinancialSums();
+  const water  = appData.water || 0;
+  const goals  = appData.goals;
+  const today  = appData.productivity.filter(p => p.date === todayStr());
+  const prodH  = today.filter(p => p.type === 'productive').reduce((a,p)=>a+p.hours,0);
+  const lostH  = today.filter(p => p.type === 'lost').reduce((a,p)=>a+p.hours,0);
+  const goalPct = goals.day > 0 ? Math.min((s.dayIncome / goals.day) * 100, 100) : 0;
+
+  const msgs = [];
+
+  // Financial
+  if (s.dayIncome > 0) {
+    if (goalPct >= 100) msgs.push(`💰 Incrível! Você bateu sua meta diária de ${fmtCurrency(goals.day)}! Considere guardar o excedente.`);
+    else if (goalPct >= 60) msgs.push(`📈 Bom ritmo financeiro hoje! Você já conquistou ${goalPct.toFixed(0)}% da sua meta diária.`);
+    else msgs.push(`💼 Você arrecadou ${fmtCurrency(s.dayIncome)} hoje. Ainda faltam ${fmtCurrency(goals.day - s.dayIncome)} para bater a meta.`);
+  } else {
+    msgs.push(`📋 Nenhuma receita registrada hoje. Lembre-se de registrar seus ganhos no módulo Financeiro.`);
+  }
+
+  // Expenses
+  if (s.dayExpense > s.dayIncome && s.dayIncome > 0) {
+    msgs.push(`⚠️ Atenção: seus gastos (${fmtCurrency(s.dayExpense)}) superaram seus ganhos hoje. Revise o fluxo de caixa.`);
+  }
+
+  // Water
+  if (water >= 8) msgs.push(`💧 Excelente! Você completou sua meta de hidratação — 8 copos! Seu corpo agradece.`);
+  else if (water >= 4) msgs.push(`💧 Você tomou ${water} copos de água. Beba mais ${8 - water} para completar a meta diária.`);
+  else msgs.push(`💧 Hidratação baixa! Apenas ${water} copo(s) de água hoje. Isso afeta energia e concentração.`);
+
+  // Productivity
+  if (prodH > 0) msgs.push(`⚡ Você teve ${prodH}h produtivas hoje. ${lostH > 0 ? `Perdeu ${lostH}h — avalie como reduzir isso amanhã.` : 'Ótimo controle do tempo!'}`);
+
+  // Encouragement
+  const encouragements = [
+    '🌟 Continue assim! Cada dia registrado é um passo rumo à sua melhor versão.',
+    '🚀 DELVALLE está do seu lado. Dados = clareza = poder de decisão.',
+    '💡 Consistência bate talento no longo prazo. Você está no caminho certo.',
+  ];
+  msgs.push(encouragements[Math.floor(Math.random() * encouragements.length)]);
+
+  const el = document.getElementById('ai-text');
+  if (el) el.innerHTML = msgs.map(m => `<p class="text-slate-300 text-sm mb-2">• ${m}</p>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DASHBOARD UPDATE
+// ═══════════════════════════════════════════════════════════════════════════════
+function updateDashboard() {
+  const s = getFinancialSums();
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+
+  const balance = s.dayIncome - s.dayExpense;
+  const balEl = document.getElementById('dash-balance');
+  if (balEl) {
+    balEl.textContent = fmtCurrency(balance);
+    balEl.style.color = balance >= 0 ? '#22C55E' : '#EF4444';
+  }
+
+  set('dash-month-income',  fmtCurrency(s.monIncome));
+  set('dash-month-expense', fmtCurrency(s.monExpense));
+  set('dash-water', `${appData.water || 0} / 8 copos`);
+
+  const goalPct = appData.goals.month > 0
+    ? Math.round(Math.min((s.monIncome / appData.goals.month) * 100, 100)) : 0;
+  set('dash-goal-pct', goalPct + '%');
+
+  // Water bar
+  const wb = document.getElementById('dash-water-bar');
+  const wl = document.getElementById('dash-water-label');
+  if (wb) wb.style.width = Math.min(((appData.water || 0) / 8) * 100, 100) + '%';
+  if (wl) wl.textContent = `${appData.water || 0} / 8`;
+
+  // Weight
+  const dw = document.getElementById('dash-weight');
+  if (dw && appData.health.weight) dw.textContent = appData.health.weight + ' kg';
+
+  // Last food
+  const todayFood = (appData.food || []).filter(f => f.date === todayStr());
+  const df = document.getElementById('dash-food');
+  if (df) df.textContent = todayFood.length
+    ? todayFood[todayFood.length - 1].text
+    : 'Nenhum registro hoje.';
+
+  // Motivation
+  generateAnalysis();
+  const mt = document.getElementById('dash-motivation-text');
+  const aiText = document.getElementById('ai-text');
+  if (mt && aiText) mt.innerHTML = aiText.innerHTML;
+
+  // Recent transactions
+  const recent = [...appData.transactions].sort((a,b)=>b.id-a.id).slice(0,5);
+  const rEl = document.getElementById('dash-recent-tx');
+  if (rEl) {
+    if (!recent.length) {
+      rEl.innerHTML = '<p class="text-slate-500 text-sm text-center py-4">Nenhuma transação ainda.</p>';
+    } else {
+      rEl.innerHTML = recent.map(t => `
+        <div class="tx-item">
+          <div class="flex items-center gap-2">
+            <i class="fas ${t.type==='income' ? 'fa-arrow-up text-income' : 'fa-arrow-down text-expense'} text-xs"></i>
+            <div>
+              <p class="text-xs font-medium text-white">${t.desc}</p>
+              <p class="text-xs text-slate-500">${fmtDate(t.date)}</p>
+            </div>
+          </div>
+          <span class="text-sm font-bold ${t.type==='income' ? 'text-income' : 'text-expense'}">
+            ${t.type==='income' ? '+' : '-'}${fmtCurrency(t.value)}
+          </span>
+        </div>`).join('');
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RENDER ALL
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderAll() {
+  renderTransactions();
+  renderFreelancer();
+  renderFixedExpenses();
+  renderFood();
+  renderWaterCups();
+  renderProductivity();
+  updateGoalBars();
+  updateSummary();
+  updateDashboard();
+  updateIMC();
+  loadDailyNote();
+  renderCalendar();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INIT: Set default dates
+// ═══════════════════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  const today = todayStr();
+  ['tx-date', 'fl-date'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = today;
+  });
+});
+</script>
+</body>
+</html>
